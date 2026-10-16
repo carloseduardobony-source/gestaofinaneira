@@ -1,0 +1,783 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Minhas Finanças</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+            min-height: 100vh;
+            color: #fff;
+            padding: 16px;
+            -webkit-font-smoothing: antialiased;
+        }
+
+        .dashboard {
+            max-width: 480px;
+            margin: 0 auto;
+        }
+
+        .header {
+            text-align: center;
+            margin-bottom: 24px;
+            padding: 16px 0;
+        }
+
+        .header h1 {
+            font-size: 1.5em;
+            font-weight: 700;
+            background: linear-gradient(90deg, #00d4ff, #7b2cbf);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .header .subtitle {
+            color: #8892b0;
+            font-size: 0.85em;
+            margin-top: 4px;
+        }
+
+        .period-selector {
+            background: rgba(255, 255, 255, 0.08);
+            border-radius: 12px;
+            padding: 12px 16px;
+            margin-bottom: 16px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .period-selector select {
+            background: transparent;
+            border: none;
+            color: #fff;
+            font-size: 1em;
+            font-weight: 600;
+            cursor: pointer;
+            outline: none;
+        }
+
+        .period-selector select option {
+            background: #1a1a2e;
+            color: #fff;
+        }
+
+        .nav-arrow {
+            background: rgba(255, 255, 255, 0.1);
+            border: none;
+            border-radius: 8px;
+            color: #fff;
+            width: 36px;
+            height: 36px;
+            font-size: 1.2em;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .nav-arrow:active {
+            background: rgba(255, 255, 255, 0.2);
+        }
+
+        .nav-arrow:disabled {
+            opacity: 0.3;
+            cursor: default;
+        }
+
+        .cards {
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 12px;
+            margin-bottom: 16px;
+        }
+
+        .card {
+            background: rgba(255, 255, 255, 0.05);
+            backdrop-filter: blur(10px);
+            border-radius: 16px;
+            padding: 20px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            transition: transform 0.2s;
+        }
+
+        .card:active {
+            transform: scale(0.98);
+        }
+
+        .card-label {
+            font-size: 0.75em;
+            color: #8892b0;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            margin-bottom: 8px;
+        }
+
+        .card-value {
+            font-size: 1.8em;
+            font-weight: 700;
+        }
+
+        .card-value.positive { color: #00ff88; }
+        .card-value.negative { color: #ff4757; }
+        .card-value.neutral { color: #00d4ff; }
+
+        .card-sub {
+            font-size: 0.8em;
+            color: #8892b0;
+            margin-top: 4px;
+        }
+
+        .section {
+            background: rgba(255, 255, 255, 0.05);
+            backdrop-filter: blur(10px);
+            border-radius: 16px;
+            padding: 20px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            margin-bottom: 16px;
+        }
+
+        .section-title {
+            font-size: 0.9em;
+            color: #8892b0;
+            margin-bottom: 16px;
+            text-align: center;
+        }
+
+        .chart-container {
+            position: relative;
+            height: 200px;
+        }
+
+        .cartao-item {
+            background: rgba(255, 255, 255, 0.03);
+            border-radius: 12px;
+            padding: 16px;
+            margin-bottom: 12px;
+        }
+
+        .cartao-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 12px;
+        }
+
+        .cartao-nome {
+            font-weight: 600;
+            font-size: 1em;
+        }
+
+        .cartao-status {
+            font-size: 0.75em;
+            padding: 4px 10px;
+            border-radius: 12px;
+            background: rgba(0, 255, 136, 0.2);
+            color: #00ff88;
+        }
+
+        .cartao-status.alerta {
+            background: rgba(255, 193, 7, 0.2);
+            color: #ffc107;
+        }
+
+        .cartao-status.perigo {
+            background: rgba(255, 71, 87, 0.2);
+            color: #ff4757;
+        }
+
+        .progress-bar {
+            height: 8px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 4px;
+            overflow: hidden;
+            margin-bottom: 8px;
+        }
+
+        .progress-fill {
+            height: 100%;
+            border-radius: 4px;
+            transition: width 0.3s;
+        }
+
+        .progress-fill.ok { background: #00ff88; }
+        .progress-fill.warning { background: #ffc107; }
+        .progress-fill.danger { background: #ff4757; }
+
+        .cartao-info {
+            display: flex;
+            justify-content: space-between;
+            font-size: 0.8em;
+            color: #8892b0;
+        }
+
+        .cartao-info span {
+            color: #fff;
+            font-weight: 600;
+        }
+
+        .meta-item {
+            background: rgba(255, 255, 255, 0.03);
+            border-radius: 12px;
+            padding: 16px;
+            margin-bottom: 12px;
+        }
+
+        .meta-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 12px;
+        }
+
+        .meta-nome {
+            font-weight: 600;
+            font-size: 1em;
+        }
+
+        .meta-percent {
+            font-size: 0.85em;
+            color: #00d4ff;
+            font-weight: 600;
+        }
+
+        .insights {
+            background: rgba(255, 255, 255, 0.05);
+            backdrop-filter: blur(10px);
+            border-radius: 16px;
+            padding: 20px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            margin-bottom: 16px;
+        }
+
+        .insight-item {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 12px;
+            background: rgba(255, 255, 255, 0.03);
+            border-radius: 10px;
+            margin-bottom: 8px;
+            font-size: 0.9em;
+        }
+
+        .insight-icon {
+            font-size: 1.2em;
+            width: 24px;
+            text-align: center;
+        }
+
+        .insight-text {
+            flex: 1;
+        }
+
+        .insight-value {
+            font-weight: 600;
+            color: #00d4ff;
+        }
+
+        .loading {
+            text-align: center;
+            padding: 40px;
+            color: #8892b0;
+        }
+
+        .spinner {
+            width: 40px;
+            height: 40px;
+            border: 3px solid rgba(255, 255, 255, 0.1);
+            border-top-color: #00d4ff;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 16px;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        .error {
+            background: rgba(255, 71, 87, 0.15);
+            border: 1px solid rgba(255, 71, 87, 0.3);
+            border-radius: 12px;
+            padding: 16px;
+            text-align: center;
+            color: #ff4757;
+            margin-bottom: 16px;
+        }
+
+        .refresh-btn {
+            background: rgba(255, 255, 255, 0.08);
+            border: 1px solid rgba(255, 255, 255, 0.15);
+            border-radius: 12px;
+            padding: 12px 20px;
+            color: #fff;
+            font-size: 0.9em;
+            font-weight: 600;
+            cursor: pointer;
+            display: block;
+            width: 100%;
+            text-align: center;
+            margin-top: 16px;
+        }
+
+        .refresh-btn:active {
+            background: rgba(255, 255, 255, 0.15);
+        }
+
+        .contas-fixas {
+            background: rgba(255, 255, 255, 0.03);
+            border-radius: 12px;
+            padding: 14px;
+            margin-bottom: 10px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .contas-fixas-nome {
+            font-size: 0.9em;
+            font-weight: 500;
+        }
+
+        .contas-fixas-valor {
+            font-size: 0.85em;
+            color: #ff4757;
+            font-weight: 600;
+        }
+
+        @media (min-width: 768px) {
+            .dashboard {
+                max-width: 720px;
+            }
+            .cards {
+                grid-template-columns: repeat(3, 1fr);
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="dashboard">
+        <div class="header">
+            <h1>Minhas Finanças</h1>
+            <div class="subtitle" id="subtitle">Carregando...</div>
+        </div>
+
+        <div class="period-selector">
+            <button class="nav-arrow" id="prevBtn" onclick="navigateMonth(-1)">&#8592;</button>
+            <select id="periodSelect" onchange="updatePeriod()">
+                <option value="current">Este mês</option>
+                <option value="next">Próximo mês</option>
+                <option value="last">Mês passado</option>
+                <option value="all">Todos</option>
+                <option value="3months">Últimos 3 meses</option>
+                <option value="custom">Personalizado</option>
+            </select>
+            <button class="nav-arrow" id="nextBtn" onclick="navigateMonth(1)">&#8594;</button>
+        </div>
+        <div id="periodLabel" style="color: #8892b0; font-size: 0.85em; text-align: center; margin-bottom: 16px;"></div>
+
+        <div id="loadingState" class="loading">
+            <div class="spinner"></div>
+            <div>Carregando dados...</div>
+        </div>
+
+        <div id="errorState" class="error" style="display: none;">
+            <div>Erro ao carregar dados</div>
+            <button class="refresh-btn" onclick="loadData()">Tentar novamente</button>
+        </div>
+
+        <div id="contentState" style="display: none;">
+            <!-- Cards principais -->
+            <div class="cards">
+                <div class="card">
+                    <div class="card-label">Receitas</div>
+                    <div class="card-value positive" id="cardReceitas">R$ 0,00</div>
+                </div>
+                <div class="card">
+                    <div class="card-label">Despesas</div>
+                    <div class="card-value negative" id="cardDespesas">R$ 0,00</div>
+                </div>
+                <div class="card">
+                    <div class="card-label">Saldo</div>
+                    <div class="card-value neutral" id="cardSaldo">R$ 0,00</div>
+                </div>
+            </div>
+
+            <!-- Faturas dos Cartões -->
+            <div class="section">
+                <div class="section-title">Faturas dos Cartões</div>
+                <div id="faturasContainer"></div>
+            </div>
+
+            <!-- Contas Fixas -->
+            <div class="section">
+                <div class="section-title">Contas Fixas do Mês</div>
+                <div id="contasFixasContainer"></div>
+            </div>
+
+            <!-- Gastos por Categoria -->
+            <div class="section">
+                <div class="section-title">Gastos por Categoria</div>
+                <div class="chart-container">
+                    <canvas id="categoriasChart"></canvas>
+                </div>
+            </div>
+
+            <!-- Metas -->
+            <div class="section">
+                <div class="section-title">Metas</div>
+                <div id="metasContainer"></div>
+            </div>
+
+            <!-- Insights -->
+            <div class="insights">
+                <div class="section-title">Insights</div>
+                <div id="insightsList"></div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const CONFIG = {
+            SHEET_ID: '1I94LvHZrLRpB78qzMozs0m1C1TD6jjT6dlnCSQyV27w',
+            APPS_SCRIPT_URL: 'https://script.google.com/macros/s/AKfycbxr3popQNuS4XwFdaZXOBdOv19M3vP1-zrpjYLke5384AkkeRKA4fTcC6T7rKSnPqQN/exec',
+        };
+
+        let dados = {
+            resumo: [],
+            faturas: [],
+            contasFixas: [],
+            metas: [],
+            extrato: []
+        };
+
+        let categoriasChart = null;
+
+        function formatCurrency(value) {
+            return new Intl.NumberFormat('pt-BR', {
+                style: 'currency',
+                currency: 'BRL'
+            }).format(value || 0);
+        }
+
+        async function loadData() {
+            showLoading(true);
+            showError(false);
+
+            try {
+                const sheets = ['RESUMO MENSAL', 'FATURAS DO CARTÃO', 'CONTAS FIXAS', 'METAS', 'EXTRATO'];
+                const promises = sheets.map(sheet => fetchSheet(sheet));
+                const results = await Promise.all(promises);
+
+                dados.resumo = results[0] || [];
+                dados.faturas = results[1] || [];
+                dados.contasFixas = results[2] || [];
+                dados.metas = results[3] || [];
+                dados.extrato = results[4] || [];
+
+                renderDashboard();
+                showLoading(false);
+                showContent(true);
+            } catch (error) {
+                console.error('Erro:', error);
+                showLoading(false);
+                showError(true);
+            }
+        }
+
+        async function fetchSheet(sheetName) {
+            const response = await fetch(CONFIG.APPS_SCRIPT_URL);
+            if (!response.ok) throw new Error(`Falha ao carregar ${sheetName}`);
+            const data = await response.json();
+            return data[sheetName] || [];
+        }
+
+        function parseCSV(csvText) {
+            const lines = csvText.split('\n').filter(line => line.trim());
+            if (lines.length < 2) return [];
+            const headers = lines[0].split(',').map(h => h.trim().replace(/"/g, ''));
+            return lines.slice(1).map(line => {
+                const values = line.split(',').map(v => v.trim().replace(/"/g, ''));
+                const obj = {};
+                headers.forEach((h, i) => obj[h] = values[i]);
+                return obj;
+            });
+        }
+
+        function renderDashboard() {
+            renderCards();
+            renderFaturas();
+            renderContasFixas();
+            renderCategoriasChart();
+            renderMetas();
+            renderInsights();
+        }
+
+        function renderCards() {
+            const resumo = dados.resumo;
+            const lastRow = resumo[resumo.length - 1] || {};
+
+            const receitas = parseFloat(lastRow.Receitas) || 0;
+            const despesas = parseFloat(lastRow.Despesas) || 0;
+            const saldo = parseFloat(lastRow.Saldo) || 0;
+
+            document.getElementById('cardReceitas').textContent = formatCurrency(receitas);
+            document.getElementById('cardDespesas').textContent = formatCurrency(despesas);
+            document.getElementById('cardSaldo').textContent = formatCurrency(saldo);
+            document.getElementById('subtitle').textContent = lastRow.Mês || '';
+        }
+
+        function renderFaturas() {
+            const container = document.getElementById('faturasContainer');
+            const faturas = dados.faturas;
+
+            if (faturas.length === 0) {
+                container.innerHTML = '<div style="color: #8892b0; text-align: center;">Nenhuma fatura</div>';
+                return;
+            }
+
+            const ultimas = faturas.slice(-3).reverse();
+
+            container.innerHTML = ultimas.map(f => {
+                const limite = parseFloat(f.Limite) || 0;
+                const utilizado = parseFloat(f.Utilizado) || 0;
+                const percent = limite > 0 ? (utilizado / limite * 100) : 0;
+                const status = percent > 70 ? 'perigo' : percent > 40 ? 'alerta' : 'ok';
+                const statusText = percent > 70 ? 'Alto' : percent > 40 ? 'Atenção' : 'OK';
+
+                return `
+                    <div class="cartao-item">
+                        <div class="cartao-header">
+                            <span class="cartao-nome">${f.Cartão}</span>
+                            <span class="cartao-status ${status}">${statusText}</span>
+                        </div>
+                        <div class="progress-bar">
+                            <div class="progress-fill ${status}" style="width: ${Math.min(percent, 100)}%"></div>
+                        </div>
+                        <div class="cartao-info">
+                            <div>Usado: <span>${formatCurrency(utilizado)}</span></div>
+                            <div>Limite: <span>${formatCurrency(limite)}</span></div>
+                            <div>Restante: <span>${formatCurrency(limite - utilizado)}</span></div>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        function renderContasFixas() {
+            const container = document.getElementById('contasFixasContainer');
+            const contas = dados.contasFixas;
+
+            if (contas.length === 0) {
+                container.innerHTML = '<div style="color: #8892b0; text-align: center;">Nenhuma conta fixa</div>';
+                return;
+            }
+
+            const ativas = contas.filter(c => c.PAGO? === 'False' || c['Pago?'] === 'False');
+
+            container.innerHTML = ativas.slice(0, 5).map(c => `
+                <div class="contas-fixas">
+                    <span class="contas-fixas-nome">${c.ITEM}</span>
+                    <span class="contas-fixas-valor">${formatCurrency(parseFloat(c.VALOR))}</span>
+                </div>
+            `).join('');
+        }
+
+        function renderCategoriasChart() {
+            const ctx = document.getElementById('categoriasChart').getContext('2d');
+            if (categoriasChart) categoriasChart.destroy();
+
+            const despesasPorCategoria = {};
+            dados.extrato.forEach(row => {
+                if (row.TIPO === 'Despesa') {
+                    const cat = row.CATEGORIA || 'Outros';
+                    const val = parseFloat(row.VALOR) || 0;
+                    despesasPorCategoria[cat] = (despesasPorCategoria[cat] || 0) + val;
+                }
+            });
+
+            const labels = Object.keys(despesasPorCategoria).slice(0, 6);
+            const data = labels.map(l => despesasPorCategoria[l]);
+
+            categoriasChart = new Chart(ctx, {
+                type: 'doughnut',
+                data: {
+                    labels: labels.length ? labels : ['Sem dados'],
+                    datasets: [{
+                        data: data.length ? data : [1],
+                        backgroundColor: ['#ff6b6b', '#4ecdc4', '#45b7d1', '#96ceb4', '#ffeaa7', '#dfe6e9'],
+                        borderWidth: 0
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            position: 'bottom',
+                            labels: { color: '#8892b0', padding: 10, font: { size: 11 } }
+                        }
+                    }
+                }
+            });
+        }
+
+        function renderMetas() {
+            const container = document.getElementById('metasContainer');
+            const metas = dados.metas;
+
+            if (metas.length === 0) {
+                container.innerHTML = '<div style="color: #8892b0; text-align: center;">Nenhuma meta</div>';
+                return;
+            }
+
+            container.innerHTML = metas.map(m => {
+                const atual = parseFloat(m['Saldo Atual']) || 0;
+                const meta = parseFloat(m['Meta 2']) || 0;
+                const percent = meta > 0 ? (atual / meta * 100) : 0;
+
+                return `
+                    <div class="meta-item">
+                        <div class="meta-header">
+                            <span class="meta-nome">${m.Meta}</span>
+                            <span class="meta-percent">${percent.toFixed(1)}%</span>
+                        </div>
+                        <div class="progress-bar">
+                            <div class="progress-fill ${percent >= 100 ? 'ok' : percent >= 50 ? 'warning' : 'danger'}" style="width: ${Math.min(percent, 100)}%"></div>
+                        </div>
+                        <div class="cartao-info">
+                            <div>Atual: <span>${formatCurrency(atual)}</span></div>
+                            <div>Meta: <span>${formatCurrency(meta)}</span></div>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        function renderInsights() {
+            const insights = [];
+            const resumo = dados.resumo;
+            const lastRow = resumo[resumo.length - 1] || {};
+
+            const receitas = parseFloat(lastRow.Receitas) || 0;
+            const despesas = parseFloat(lastRow.Despesas) || 0;
+            const saldo = parseFloat(lastRow.Saldo) || 0;
+
+            if (saldo > 0) {
+                insights.push({ icon: '+', text: 'Saldo positivo', value: formatCurrency(saldo) });
+            } else if (saldo < 0) {
+                insights.push({ icon: '-', text: 'Saldo negativo', value: formatCurrency(saldo) });
+            }
+
+            const diff = receitas - despesas;
+            if (diff > 0) {
+                insights.push({ icon: '=', text: 'Economia no mês', value: formatCurrency(diff) });
+            }
+
+            const container = document.getElementById('insightsList');
+            container.innerHTML = insights.map(i => `
+                <div class="insight-item">
+                    <span class="insight-icon">${i.icon}</span>
+                    <span class="insight-text">${i.text}</span>
+                    <span class="insight-value">${i.value}</span>
+                </div>
+            `).join('');
+        }
+
+        let mesSelecionado = null;
+
+        function updatePeriod() {
+            const select = document.getElementById('periodSelect');
+            const resumo = dados.resumo;
+
+            if (resumo.length === 0) return;
+
+            const mesAtual = resumo.length - 1;
+
+            switch(select.value) {
+                case 'current':
+                    mesSelecionado = mesAtual;
+                    break;
+                case 'next':
+                    mesSelecionado = Math.min(mesAtual + 1, resumo.length - 1);
+                    break;
+                case 'last':
+                    mesSelecionado = Math.max(0, mesAtual - 1);
+                    break;
+                case '3months':
+                    mesSelecionado = Math.max(0, mesAtual - 2);
+                    break;
+                case 'custom':
+                    break;
+                default:
+                    mesSelecionado = null;
+            }
+
+            updateNavButtons();
+            renderDashboard();
+        }
+
+        function navigateMonth(direction) {
+            const resumo = dados.resumo;
+            if (resumo.length === 0) return;
+
+            if (mesSelecionado === null) {
+                mesSelecionado = resumo.length - 1;
+            } else {
+                mesSelecionado += direction;
+            }
+
+            mesSelecionado = Math.max(0, Math.min(resumo.length + 2, mesSelecionado));
+
+            document.getElementById('periodSelect').value = 'custom';
+            updateNavButtons();
+            renderDashboard();
+        }
+
+        function updateNavButtons() {
+            const resumo = dados.resumo;
+            const prevBtn = document.getElementById('prevBtn');
+            const nextBtn = document.getElementById('nextBtn');
+
+            const maxMes = resumo.length + 2;
+            prevBtn.disabled = mesSelecionado === null || mesSelecionado <= 0;
+            nextBtn.disabled = mesSelecionado === null || mesSelecionado >= maxMes;
+
+            const label = document.getElementById('periodLabel');
+            if (mesSelecionado !== null && resumo[mesSelecionado]) {
+                const mesNome = resumo[mesSelecionado].Mês || '';
+                const isFuture = mesSelecionado >= resumo.length;
+                label.textContent = isFuture ? `${mesNome} (previsão)` : mesNome;
+            } else {
+                label.textContent = 'Todos os meses';
+            }
+        }
+
+        function showLoading(show) {
+            document.getElementById('loadingState').style.display = show ? 'block' : 'none';
+        }
+
+        function showError(show) {
+            document.getElementById('errorState').style.display = show ? 'block' : 'none';
+        }
+
+        function showContent(show) {
+            document.getElementById('contentState').style.display = show ? 'block' : 'none';
+        }
+
+        document.addEventListener('DOMContentLoaded', loadData);
+    </script>
+</body>
+</html>
